@@ -3,7 +3,9 @@ from lxml import etree
 
 url = 'https://movie.douban.com/subject/1292001/'
 headers = {'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:75.0) Gecko/20100101 Firefox/75.0'}
+#获取网页数据
 data = rq.get(url,headers=headers).text
+#解析网页数据
 s = etree.HTML(data)
 
 #默认返回的是list列表格式
