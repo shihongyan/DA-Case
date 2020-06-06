@@ -4,14 +4,22 @@ import re
 import time
 import random
 import jieba
+import numpy as np
+from PIL import Image
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
 
 #设置输入输出流的格式
 os.environ['NLS_LANG'] = 'SIMPLIFIED CHINESE_CHINA.UTF8'
 
+#词云形状图片
+WC_MASK_IMG = 'dangdou.jpg'
 #生成Session对象，用于保存Cookie
 s = rq.session()
 # 影评数据保存文件
 COMMENTS_FILE_PATH = 'douban_comments.txt'
+#词云云体
+WC_FONT_PATH='C:\\Windows\\Fonts\\simkai.ttf'
 
 def login_douban():
     '''
@@ -27,7 +35,7 @@ def login_douban():
     data = {
         'ck': '',
         'name':'15704446814',
-        'password':'lxl12359',
+        'password':'wyfd96910',
         'remember':'false',
         'ticket': ''}
     try:
@@ -94,7 +102,29 @@ def cut_word():
         wl = " ".join(wordlist)
         print(wl)
         return wl
+
+def create_word_cloud():
+    '''
+    生成词云
+    :return:
+    '''
+    #设置词云形状图片
+    wc_mask = np.array(Image.open(WC_MASK_IMG))
+    #数据清洗词列表
+    stop_words = ['就是', '不是', '但是', '还是', '只是', '这样', '这个', '一个', '什么', '电影', '没有','呵呵']
+    #设置词云的配置，如：字体，背景色，词云形状，大小
+    wc = WordCloud(background_color='red',max_words=255,mask=wc_mask,scale=4,
+                   max_font_size=255,random_state=42,stopwords=stop_words,font_path=WC_FONT_PATH)
+    #生成词云
+    wc.generate(cut_word())
+    #在只设置mask的情况下，会得到一个拥有图片形状的词云
+    plt.imshow(wc,interpolation="bilinear")
+    plt.axis("off")
+    plt.figure()
+    plt.show()
+
 if __name__ == '__main__':
     #if login_douban():
-     #   batch_spider_comment()
-    cut_word()
+     #  batch_spider_comment()
+    #cut_word()
+    create_word_cloud()
