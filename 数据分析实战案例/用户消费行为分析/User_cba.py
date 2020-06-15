@@ -1,5 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
 
 #设置title显示中文
 plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']
@@ -124,22 +125,85 @@ def user_analysis(df):
     plt.title('用户累计消费金额占比')
     plt.show()
 
-def user_behavior(df):
+def user_behavior1(df):
     '''
-    用户消费行为分析
+    用户消费行为分析:主要根据用户消费时间进行分析
     :param df: 待分析的基础数据
     :return:
     '''
     #将用户根据用户ID分类
     group_user = df.groupby('user_id')
     #判断用户第一次消费和最后一次消费（首购/）
-    group_user.month.min().value_counts()
+    first_cus=group_user.month.min().value_counts()
+    print(first_cus)
     group_user.month.max().value_counts()
     #用户消费时间分布
     group_user.max().order_dt.value_counts().plot()
     plt.show()
+    #客户消费开始时间与截至时间
+    user_life = group_user.order_dt.agg(['min','max'])
+    print(user_life.head())
+    #用户的购买周期
+    cycle = (user_life['min'] == user_life['max']).value_counts()
+    print(cycle)
+def user_behavior2(df):
+    '''
+    对用户行为进行更深层次的分析
+    :param df:
+    :return:返回统计用户消费金额，购买数量，消费时间等信息的数据集
+    '''
+    #统计每个用户消费的总金额，购买产品数，最后一次的消费时间
+    user_bht2 = df.pivot_table(index = 'user_id',
+                         values = ['order_products','order_amount','order_dt'],
+                         aggfunc = {'order_products':'sum','order_amount':'sum','order_dt':'max'})
+    print(user_bht2)
+    # -(user_bht2.order_dt - user_bht2.order_dt.max())结果为时间类型，将时间格式转化为整数或者浮点数的形式，可以除以单位‘D’，也可以用astype转化
+    user_bht2['D'] =-(user_bht2.order_dt - user_bht2.order_dt.max()) / np.timedelta64(1,'D')
+    user_bht2.rename(columns={'order_products':'P','order_amount':'A'},inplace=True)
+    print(user_bht2.head())
+    return user_bht2
 
+def RFM_func(user_bh2):
+    level = user_bh2.apply(lambda user_bh2 : '1' if user_bh2 >=0 else '0')
+    label = level.D + level.P + level.A
+    d = {
+        '000':'一般发展客户',
+        '001':'重要发展客户',
+        '010':'一般保持客户',
+        '011':'重要保持客户',
+        '100':'一般挽留客户',
+        '101':'重要挽留客户',
+        '110':'一般价值客户',
+        '111':'重点价值客户'
+    }
+    result = d[label]
+    return result
+
+def RFM_show():
+    '''
+    将用户分类后统计
+    :return:
+    '''
+    df_b = data_base()
+    user_bh2 = user_behavior2(df_b)
+    #区分每个用户的类型：一般....？重要...？
+    user_bh2['label'] = user_bh2[['D', 'P', 'A']].apply(lambda x: x - x.mean()).apply(RFM_func, axis=1)
+    print(user_bh2)
+    #不同类型的客户产生的消费金额和购买商品数统计
+    user_bh3 =user_bh2.groupby('label').sum()
+    print(user_bh3)
+    #统计不同类型客户的数量
+    user_bh4 = user_bh2.groupby('label').count()
+    #print(user_bh4)
+
+    #用户生命周期
+    pivoted_counts = df_b.pivot_table(index='user_id',
+                                      columns='month',
+                                      values='order_dt',
+                                      aggfunc='count').fillna(0)
+    #print(pivoted_counts.head())
+    df_purchase = pivoted_counts.applymap(lambda x: 1 if x > 0 else 0)
+    print(df_purchase.tail())
 
 if __name__=='__main__':
-   df_b=data_base()
-   user_behavior(df_b)
+  RFM_show()
